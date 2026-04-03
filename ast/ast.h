@@ -33,6 +33,7 @@ class LoopStmt;
 class WhileStmt;
 class FuncDeclStmt;
 class RouteDeclStmt;
+class ComponentDeclStmt;
 class ImportStmt;
 class ReturnStmt;
 class BreakStmt;
@@ -71,6 +72,7 @@ class StmtVisitor {
     virtual void visitWhileStmt(const WhileStmt& stmt) = 0;
     virtual void visitFuncDeclStmt(const FuncDeclStmt& stmt) = 0;
     virtual void visitRouteDeclStmt(const RouteDeclStmt& stmt) = 0;
+    virtual void visitComponentDeclStmt(const ComponentDeclStmt& stmt) = 0;
     virtual void visitImportStmt(const ImportStmt& stmt) = 0;
     virtual void visitReturnStmt(const ReturnStmt& stmt) = 0;
     virtual void visitBreakStmt(const BreakStmt& stmt) = 0;
@@ -316,13 +318,26 @@ class RouteDeclStmt final : public Stmt {
     RouteDeclStmt(Token keyword,
                   std::unique_ptr<Expr> path,
                   std::string method,
+                  std::vector<Token> middleware,
                   std::unique_ptr<BlockStmt> body,
                   SourceSpan span);
 
     Token keyword;
     std::unique_ptr<Expr> path;
     std::string method;
+    std::vector<Token> middleware;
     std::unique_ptr<BlockStmt> body;
+
+    void accept(StmtVisitor& visitor) const override;
+};
+
+class ComponentDeclStmt final : public Stmt {
+  public:
+    ComponentDeclStmt(Token keyword, Token name, std::string source, SourceSpan span);
+
+    Token keyword;
+    Token name;
+    std::string source;
 
     void accept(StmtVisitor& visitor) const override;
 };

@@ -168,16 +168,25 @@ void ReturnStmt::accept(StmtVisitor& visitor) const {
 RouteDeclStmt::RouteDeclStmt(Token keyword,
                              std::unique_ptr<Expr> path,
                              std::string method,
+                             std::vector<Token> middleware,
                              std::unique_ptr<BlockStmt> body,
                              SourceSpan span)
     : Stmt(span),
       keyword(std::move(keyword)),
       path(std::move(path)),
       method(std::move(method)),
+      middleware(std::move(middleware)),
       body(std::move(body)) {}
 
 void RouteDeclStmt::accept(StmtVisitor& visitor) const {
     visitor.visitRouteDeclStmt(*this);
+}
+
+ComponentDeclStmt::ComponentDeclStmt(Token keyword, Token name, std::string source, SourceSpan span)
+    : Stmt(span), keyword(std::move(keyword)), name(std::move(name)), source(std::move(source)) {}
+
+void ComponentDeclStmt::accept(StmtVisitor& visitor) const {
+    visitor.visitComponentDeclStmt(*this);
 }
 
 ImportStmt::ImportStmt(Token keyword, std::unique_ptr<Expr> path, SourceSpan span)

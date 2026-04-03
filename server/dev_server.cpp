@@ -1,5 +1,6 @@
 #include "server/dev_server.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cctype>
 #include <filesystem>
@@ -9,8 +10,10 @@
 #include <thread>
 
 #include "runtime/config_loader.h"
+#include "utils/browser_launcher.h"
 #include "utils/project_layout.h"
 #include "utils/keyboard.h"
+#include "utils/version.h"
 
 namespace wevoaweb::server {
 
@@ -43,6 +46,20 @@ std::optional<std::uint16_t> portFromConfig(const Value& config) {
     return static_cast<std::uint16_t>(configuredPort);
 }
 
+bool browserFromConfig(const Value& config) {
+    if (!config.isObject()) {
+        return true;
+    }
+
+    const auto& object = config.asObject();
+    const auto found = object.find("open_browser");
+    if (found == object.end()) {
+        return true;
+    }
+
+    return !found->second.isBoolean() || found->second.asBoolean();
+}
+
 Value withDevelopmentEnvironment(Value config) {
     if (!config.isObject()) {
         config = Value(Value::Object {});
@@ -50,6 +67,40 @@ Value withDevelopmentEnvironment(Value config) {
 
     config.asObject().insert_or_assign("env", Value("dev"));
     return config;
+}
+
+void logApplicationSummary(Logger& logger, const WebApplication& application) {
+    const auto routes = application.routePaths();
+    const auto views = application.viewPaths();
+    logger.info("Loaded routes: " + std::to_string(routes.size()));
+    logger.info("Loaded views: " + std::to_string(views.size()));
+    logger.info("Worker threads: " + std::to_string(application.workerThreads()));
+    logger.info("Max queue size: " + std::to_string(application.maxQueueSize()));
+    logger.info("Template cache: " + std::to_string(application.templateCacheLimit()));
+    logger.info("Fragment cache: " + std::to_string(application.fragmentCacheLimit()));
+    logger.info("Session TTL: " + std::to_string(application.sessionTimeToLiveSeconds()) + "s");
+    logger.info("Max sessions: " + std::to_string(application.maxSessionCount()));
+    for (const auto& route : routes) {
+        logger.route("Registered " + route);
+    }
+}
+
+void logPerformanceSummary(Logger& logger, std::uint64_t totalRequests, std::uint64_t totalMicros, std::uint64_t maxMicros) {
+    if (totalRequests == 0) {
+        return;
+    }
+
+    const double averageMs = static_cast<double>(totalMicros) / static_cast<double>(totalRequests) / 1000.0;
+    const double maxMs = static_cast<double>(maxMicros) / 1000.0;
+    logger.perf("avg: " + std::to_string(averageMs) + "ms | max: " + std::to_string(maxMs) +
+                "ms | requests: " + std::to_string(totalRequests));
+}
+
+std::string formatMetrics(const HttpResponse& response) {
+    return " [" + std::to_string(response.requestMicros / 1000.0) + "ms total, " +
+           std::to_string(response.routeMicros / 1000.0) + "ms route, " +
+           std::to_string(response.templateMicros / 1000.0) + "ms templates, " +
+           std::to_string(response.dbMicros / 1000.0) + "ms db]";
 }
 
 }  // namespace
@@ -74,6 +125,7 @@ DevServer::~DevServer() {
 
 int DevServer::run() {
     logger_.wevoa("Starting development server...");
+    logger_.wevoa(std::string(kWevoaRuntimeName) + " v" + kWevoaVersion);
 
     installApplication(loadApplication());
 
@@ -85,10 +137,14 @@ int DevServer::run() {
 
     logger_.wevoa("Server started");
     logger_.wevoa("Running at: http://localhost:" + std::to_string(options_.port));
+    logger_.info("Mode: development");
     logger_.info("Watching directories: " + options_.appDirectory + ", " + options_.viewsDirectory + ", " +
                  options_.publicDirectory);
     logger_.info("Press R to reload");
     logger_.info("Press Q to quit");
+    if (openBrowserOnStart_) {
+        openBrowserUrl("http://localhost:" + std::to_string(options_.port));
+    }
 
     KeyboardInput keyboard;
 
@@ -112,6 +168,10 @@ int DevServer::run() {
     logger_.wevoa("Shutting down...");
     if (watcher_) {
         watcher_->stop();
+    }
+    if (application_ != nullptr && application_->performanceMetricsEnabled()) {
+        std::lock_guard<std::mutex> lock(perfMutex_);
+        logPerformanceSummary(logger_, totalRequests_, totalRequestMicros_, maxRequestMicros_);
     }
     stopServer();
     logger_.wevoa("Server stopped");
@@ -146,18 +206,35 @@ void DevServer::handleFileChange(const FileChangeEvent& event) {
 }
 
 void DevServer::handleRequest(const HttpRequest& request, const HttpResponse& response) {
+    const std::string timing = application_ != nullptr && application_->performanceMetricsEnabled()
+                                   ? formatMetrics(response)
+                                   : "";
+    if (application_ != nullptr && application_->performanceMetricsEnabled() && request.method != "QUEUE") {
+        std::lock_guard<std::mutex> lock(perfMutex_);
+        ++totalRequests_;
+        totalRequestMicros_ += response.requestMicros;
+        maxRequestMicros_ = std::max(maxRequestMicros_, response.requestMicros);
+    }
+    if (response.statusCode == 503) {
+        logger_.warn("queue overflow" + timing);
+        return;
+    }
     if (response.statusCode == 404) {
-        logger_.error("Route not found: " + request.method + " " + request.path);
+        logger_.error("Route not found: " + request.method + " " + request.path + timing);
         return;
     }
 
     if (response.statusCode >= 500) {
-        logger_.error("Request failed: " + request.method + " " + request.path + " -> " +
-                      std::to_string(response.statusCode));
+        std::string message = "Request failed: " + request.method + " " + request.path + " -> " +
+                              std::to_string(response.statusCode) + timing;
+        if (!response.debugMessage.empty()) {
+            message += "\n" + response.debugMessage;
+        }
+        logger_.error(message);
         return;
     }
 
-    logger_.info("Request: " + request.method + " " + request.path + " -> " + std::to_string(response.statusCode));
+    logger_.route(request.method + " " + request.path + " -> " + std::to_string(response.statusCode) + timing);
 }
 
 void DevServer::reload(const std::string& reason) {
@@ -182,6 +259,7 @@ std::unique_ptr<WebApplication> DevServer::loadApplication() {
                                                   options_.viewsDirectory,
                                                   options_.publicDirectory);
     Value config = withDevelopmentEnvironment(loadConfigFile(layout.configFile));
+    openBrowserOnStart_ = browserFromConfig(config);
     if (!options_.portSpecified) {
         if (const auto configuredPort = portFromConfig(config); configuredPort.has_value()) {
             options_.port = *configuredPort;
@@ -213,6 +291,8 @@ void DevServer::installApplication(std::unique_ptr<WebApplication> application) 
         stopServer();
         throw std::runtime_error(failure);
     }
+
+    logApplicationSummary(logger_, *application_);
 }
 
 void DevServer::stopServer() {
@@ -243,7 +323,9 @@ void DevServer::launchServerLocked() {
     httpServer_ = std::make_unique<HttpServer>(
         *application_,
         options_.port,
-        [this](const HttpRequest& request, const HttpResponse& response) { handleRequest(request, response); });
+        [this](const HttpRequest& request, const HttpResponse& response) { handleRequest(request, response); },
+        application_->workerThreads(),
+        application_->maxQueueSize());
 
     HttpServer* server = httpServer_.get();
     serverThread_ = std::thread([this, server]() {

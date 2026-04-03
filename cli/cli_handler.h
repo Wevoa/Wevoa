@@ -33,6 +33,14 @@ struct ServeCommandOptions {
     bool portSpecified = false;
 };
 
+struct InspectCommandOptions : ProjectCommandOptions {
+    bool globalMode = false;
+};
+
+struct InstallCommandOptions {
+    bool globalMode = false;
+};
+
 class CLIHandler {
   public:
     enum class CommandType {
@@ -40,6 +48,11 @@ class CLIHandler {
         Create,
         Build,
         Serve,
+        Migrate,
+        MakeMigration,
+        Install,
+        Doctor,
+        Info,
         Version,
         Help
     };
@@ -49,7 +62,11 @@ class CLIHandler {
         StartCommandOptions startOptions {};
         BuildCommandOptions buildOptions {};
         ServeCommandOptions serveOptions {};
+        InspectCommandOptions inspectOptions {};
         std::string projectName;
+        std::string migrationName;
+        std::string packageName;
+        InstallCommandOptions installOptions {};
     };
 
     Command parse(int argc, char** argv) const;

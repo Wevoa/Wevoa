@@ -17,6 +17,10 @@ Value::Value(bool value) : storage_(value) {}
 
 Value::Value(std::shared_ptr<Callable> value) : storage_(std::move(value)) {}
 
+Value::Value(std::shared_ptr<Array> value) : storage_(std::move(value)) {}
+
+Value::Value(std::shared_ptr<Object> value) : storage_(std::move(value)) {}
+
 Value::Value(Array value) : storage_(std::make_shared<Array>(std::move(value))) {}
 
 Value::Value(Object value) : storage_(std::make_shared<Object>(std::move(value))) {}

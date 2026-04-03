@@ -20,6 +20,9 @@ $sources = @(
     "main.cpp",
     "cli/cli_handler.cpp",
     "cli/build_pipeline.cpp",
+    "cli/migration_manager.cpp",
+    "cli/package_manager.cpp",
+    "cli/project_inspector.cpp",
     "cli/project_creator.cpp",
     "lexer/lexer.cpp",
     "parser/parser.cpp",
@@ -40,11 +43,14 @@ $sources = @(
     "server/http_server.cpp",
     "server/dev_server.cpp",
     "server/serve_server.cpp",
+    "server/session_store.cpp",
     "watcher/file_watcher.cpp",
     "utils/logger.cpp",
     "utils/keyboard.cpp",
     "utils/file_writer.cpp",
-    "utils/project_layout.cpp"
+    "utils/project_layout.cpp",
+    "utils/browser_launcher.cpp",
+    "utils/security.cpp"
 ) | ForEach-Object { Join-Path $root $_ }
 
 $arguments = @(

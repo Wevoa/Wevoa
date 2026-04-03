@@ -8,6 +8,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "ast/ast.h"
@@ -56,19 +57,37 @@ class Interpreter final : public ExprVisitor, public StmtVisitor {
         std::function<std::string(Interpreter&, const std::string&, const Value&, const SourceSpan&)> renderer);
     void setInlineTemplateRenderer(
         std::function<std::string(Interpreter&, const std::string&, const SourceSpan&)> renderer);
+    void setCurrentSourceName(std::string sourceName);
+    const std::string& currentSourceName() const;
     void setCurrentRequest(Value request);
     void clearCurrentRequest();
+    void setCurrentRouteParams(Value params);
+    void clearCurrentRouteParams();
+    void setCurrentSession(Value session);
+    void clearCurrentSession();
+    void setCurrentCsrfToken(std::string token);
+    const std::string& currentCsrfToken() const;
+    void clearRequestContext();
     void defineGlobal(std::string name, Value value, bool isConstant);
+    void registerComponent(std::string name, std::string source);
+    bool hasComponent(const std::string& name) const;
+    std::string componentSource(const std::string& name, const SourceSpan& span) const;
     std::string renderView(const std::string& path, const Value& data, const SourceSpan& span);
     std::string renderInlineTemplate(const std::string& source, const SourceSpan& span);
+    void addResponseHeader(std::string name, std::string value);
+    std::vector<std::pair<std::string, std::string>> consumeResponseHeaders();
+    void copySnapshotTo(Interpreter& target) const;
 
     std::shared_ptr<Environment> globals() const;
     std::shared_ptr<Environment> currentEnvironment() const;
     const Value& currentRequest() const;
+    const Value& currentRouteParams() const;
+    const Value& currentSession() const;
+    std::vector<std::string> componentSources() const;
     bool hasRoute(const std::string& path, const std::string& method = "GET") const;
-    std::string renderRoute(const std::string& path,
-                            const std::string& method = "GET",
-                            const SourceSpan& span = SourceSpan {});
+    Value renderRoute(const std::string& path,
+                      const std::string& method = "GET",
+                      const SourceSpan& span = SourceSpan {});
     std::vector<std::string> routePaths() const;
     std::ostream& output();
     std::istream& input();
@@ -94,6 +113,7 @@ class Interpreter final : public ExprVisitor, public StmtVisitor {
     void visitWhileStmt(const WhileStmt& stmt) override;
     void visitFuncDeclStmt(const FuncDeclStmt& stmt) override;
     void visitRouteDeclStmt(const RouteDeclStmt& stmt) override;
+    void visitComponentDeclStmt(const ComponentDeclStmt& stmt) override;
     void visitImportStmt(const ImportStmt& stmt) override;
     void visitReturnStmt(const ReturnStmt& stmt) override;
     void visitBreakStmt(const BreakStmt& stmt) override;
@@ -117,6 +137,12 @@ class Interpreter final : public ExprVisitor, public StmtVisitor {
     std::function<std::string(Interpreter&, const std::string&, const Value&, const SourceSpan&)> templateRenderer_;
     std::function<std::string(Interpreter&, const std::string&, const SourceSpan&)> inlineTemplateRenderer_;
     Value currentRequest_;
+    Value currentRouteParams_;
+    Value currentSession_;
+    std::vector<std::pair<std::string, std::string>> responseHeaders_;
+    std::unordered_map<std::string, std::string> components_;
+    std::string currentCsrfToken_;
+    std::string currentSourceName_;
 };
 
 }  // namespace wevoaweb

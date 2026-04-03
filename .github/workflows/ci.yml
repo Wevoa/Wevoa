@@ -22,15 +22,18 @@ jobs:
           g++ -std=c++17 -Wall -Wextra -pedantic -I. main.cpp \
               cli/cli_handler.cpp \
               cli/build_pipeline.cpp \
+              cli/migration_manager.cpp \
+              cli/package_manager.cpp \
+              cli/project_inspector.cpp \
               cli/project_creator.cpp \
               lexer/lexer.cpp parser/parser.cpp ast/ast.cpp \
               interpreter/value.cpp interpreter/environment.cpp \
               interpreter/callable.cpp interpreter/interpreter.cpp interpreter/route.cpp \
               runtime/builtins.cpp runtime/ast_printer.cpp runtime/session.cpp \
               runtime/template_engine.cpp runtime/config_loader.cpp runtime/sqlite_module.cpp \
-              server/http_types.cpp server/web_app.cpp server/http_server.cpp server/dev_server.cpp server/serve_server.cpp \
+              server/http_types.cpp server/web_app.cpp server/http_server.cpp server/dev_server.cpp server/serve_server.cpp server/session_store.cpp \
               watcher/file_watcher.cpp \
-              utils/logger.cpp utils/keyboard.cpp utils/file_writer.cpp utils/project_layout.cpp \
+              utils/logger.cpp utils/keyboard.cpp utils/file_writer.cpp utils/project_layout.cpp utils/browser_launcher.cpp utils/security.cpp \
               -o wevoa -lsqlite3
 
       - name: Smoke test CLI help
@@ -45,14 +48,25 @@ jobs:
           test -f ci-sample/app/main.wev
           test -f ci-sample/views/index.wev
           test -f ci-sample/views/layout.wev
+          test -f ci-sample/views/docs.wev
+          test -f ci-sample/views/contact.wev
+          test -f ci-sample/views/partials/nav.wev
           test -f ci-sample/public/style.css
 
       - name: Smoke test build pipeline
         run: |
           cd ci-sample
+          ../wevoa make:migration create_ci_table
+          ls migrations/*.sql
+          ../wevoa install ci-local-package
+          test -f packages/ci-local-package/main.wev
           ../wevoa build
+          ../wevoa migrate
+          ../wevoa doctor
+          ../wevoa info --global
           test -f build/app/main.wev
           test -f build/views/index.wev
+          test -f build/views/docs.wev
           test -f build/public/style.css
           test -f build/wevoa.config.json
           test -f build/wevoa.build.json

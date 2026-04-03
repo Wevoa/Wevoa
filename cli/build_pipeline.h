@@ -14,6 +14,7 @@ namespace wevoaweb {
 struct BuildResult {
     std::filesystem::path outputRoot;
     std::vector<std::string> routes;
+    std::vector<std::string> views;
     std::vector<std::string> assets;
 };
 

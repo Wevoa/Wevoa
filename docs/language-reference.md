@@ -158,6 +158,12 @@ import "shared.wev"
 
 Imported files execute once per runtime session, even if requested multiple times.
 
+Package imports resolve from `packages/` when the path starts with `@`.
+
+```text
+import "@shared-auth"
+```
+
 ## Templates
 
 ### File-Based Templates
@@ -201,6 +207,37 @@ Conditional blocks:
 ```
 
 These blocks can be nested and work alongside normal `{{ expression }}` interpolation.
+
+### Template Includes
+
+Standalone includes:
+
+```text
+include "partials/nav.wev"
+```
+
+Included templates render in the same template environment as the parent file.
+
+### Template Components
+
+Declare reusable components in route source files:
+
+```text
+component card {
+html {
+<article class="card">
+  <h2>{{ title }}</h2>
+  <p>{{ body }}</p>
+</article>
+}
+}
+```
+
+Use them inside templates as self-closing tags:
+
+```text
+<card title="Hello" body="Reusable markup" />
+```
 
 ### Inline HTML Blocks
 
@@ -272,6 +309,56 @@ Returns a new array with one extra element appended.
 let names = append(["Ahad"], "Ali")
 ```
 
+### `hash()`
+
+Hashes a password string for later verification.
+
+```text
+let digest = hash("secret-pass")
+```
+
+### `verify()`
+
+Verifies a password against a stored hash.
+
+```text
+print(verify("secret-pass", digest))
+```
+
+### `verify_csrf()`
+
+Compares a submitted token against the active request token.
+
+```text
+if (!verify_csrf(request.form("csrf_token"))) {
+return status(403, "Forbidden")
+}
+```
+
+### `json()`
+
+Returns a JSON HTTP response.
+
+```text
+return json({ success: true })
+```
+
+### `redirect()`
+
+Returns an HTTP redirect response.
+
+```text
+return redirect("/login")
+```
+
+### `status()`
+
+Returns a response with an explicit status code.
+
+```text
+return status(404, "Not Found")
+```
+
 ## SQLite
 
 WevoaWeb includes a native SQLite module for lightweight SQL-backed apps.
@@ -328,6 +415,39 @@ return "<h1>" + name + "</h1>"
 }
 ```
 
+PUT / PATCH / DELETE routes:
+
+```text
+route "/users/:id" method PUT {
+let payload = request.json()
+return json({ id: params.id, name: payload.name })
+}
+```
+
+Dynamic route parameters:
+
+```text
+route "/users/:id" {
+return "<h1>" + params.id + "</h1>"
+}
+```
+
+Route middleware:
+
+```text
+func auth() {
+if (!session.get("signed_in")) {
+return redirect("/login")
+}
+
+return true
+}
+
+route "/dashboard" middleware auth {
+return view("dashboard.wev", {})
+}
+```
+
 Rules:
 
 - route paths must evaluate to strings
@@ -341,13 +461,42 @@ Routes receive a `request` object.
 Available members:
 
 - `request.method`
+- `request.method()`
 - `request.path`
 - `request.target`
 - `request.body`
 - `request.query("key")`
 - `request.form("key")`
+- `request.json()`
+- `request.csrf()`
 - `request.query_data`
 - `request.form_data`
+- `request.json_data`
+- `request.json_valid`
+- `request.json_error`
+
+## Sessions
+
+Routes also receive a `session` object.
+
+Available members:
+
+- `session.get("key")`
+- `session.set("key", value)`
+- `session.delete("key")`
+
+Current session storage is cookie-backed and stored in memory.
+
+## Migrations
+
+Create and apply SQL migrations from the project root:
+
+```text
+wevoa make:migration create_users
+wevoa migrate
+```
+
+Migrations are stored in `migrations/` and tracked in SQLite through the `wevoa_migrations` table.
 
 ## Config
 
@@ -371,9 +520,19 @@ Single-line comments:
 
 The lexer, parser, template renderer, and interpreter attach source spans to errors using file names, line numbers, columns, and a source snippet when available.
 
+## Package Installation
+
+Install a local package into `packages/`:
+
+```text
+wevoa install ../shared-package
+```
+
+If the source does not exist yet, WevoaWeb creates a local placeholder package scaffold.
+
 ## Not Yet Supported
 
 - floating-point numbers
 - user-defined classes
-- a package manager or production bundler
+- network package registry installs
 - bytecode or JIT execution

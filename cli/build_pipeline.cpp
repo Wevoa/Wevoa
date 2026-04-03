@@ -64,10 +64,12 @@ BuildResult BuildPipeline::build(const BuildCommandOptions& options, std::istrea
                                        false,
                                        config);
     application.loadViews();
+    application.validateTemplates();
 
     BuildResult result;
     result.outputRoot = outputRoot;
     result.routes = application.routePaths();
+    result.views = application.viewPaths();
     result.assets = enumeratePublicAssets(outputRoot / "public");
 
     Value::Array routeValues;
@@ -82,15 +84,25 @@ BuildResult BuildPipeline::build(const BuildCommandOptions& options, std::istrea
         assetValues.emplace_back(asset);
     }
 
+    Value::Array viewValues;
+    viewValues.reserve(result.views.size());
+    for (const auto& view : result.views) {
+        viewValues.emplace_back(view);
+    }
+
     Value::Object manifest;
     manifest.insert_or_assign("runtime", Value(kWevoaRuntimeName));
     manifest.insert_or_assign("version", Value(kWevoaVersion));
     manifest.insert_or_assign("mode", Value("production"));
     manifest.insert_or_assign("output", Value(outputRoot.filename().string()));
     manifest.insert_or_assign("routes", Value(std::move(routeValues)));
+    manifest.insert_or_assign("views", Value(std::move(viewValues)));
     manifest.insert_or_assign("assets", Value(std::move(assetValues)));
 
     writer_.writeTextFile(outputRoot / "wevoa.build.json", serializeJson(Value(std::move(manifest))));
+    writer_.writeTextFile(outputRoot / "wevoa.templates.json",
+                          serializeJson(Value(application.compiledTemplateManifest())));
+    writer_.writeTextFile(outputRoot / "wevoa.snapshot.json", serializeJson(application.snapshotManifest()));
     return result;
 }
 

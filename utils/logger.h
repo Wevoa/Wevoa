@@ -9,6 +9,10 @@ namespace wevoaweb {
 enum class LogLevel {
     Wevoa,
     Info,
+    Warn,
+    Perf,
+    Route,
+    Build,
     Watch,
     Error,
     Success
@@ -20,6 +24,10 @@ class Logger {
 
     void wevoa(const std::string& message);
     void info(const std::string& message);
+    void warn(const std::string& message);
+    void perf(const std::string& message);
+    void route(const std::string& message);
+    void build(const std::string& message);
     void watch(const std::string& message);
     void error(const std::string& message);
     void success(const std::string& message);

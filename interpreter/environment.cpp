@@ -68,4 +68,12 @@ bool Environment::existsLocal(const std::string& name) const {
     return values_.find(name) != values_.end();
 }
 
+const std::unordered_map<std::string, Environment::Binding>& Environment::bindings() const {
+    return values_;
+}
+
+const std::shared_ptr<Environment>& Environment::enclosing() const {
+    return enclosing_;
+}
+
 }  // namespace wevoaweb

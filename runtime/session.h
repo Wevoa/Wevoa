@@ -5,6 +5,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -26,14 +27,21 @@ class RuntimeSession {
     void setCurrentRequest(Value request);
     void clearCurrentRequest();
     void runSource(const std::string& sourceName, const std::string& source);
+    void runCachedSource(const std::string& sourceName);
+    void shareParsedSourcesWith(RuntimeSession& target) const;
+    std::unique_ptr<RuntimeSession> cloneSnapshot() const;
     void runFile(const std::string& path);
     bool hasRoute(const std::string& path, const std::string& method = "GET") const;
-    std::string renderRoute(const std::string& path, const std::string& method = "GET");
+    Value renderRoute(const std::string& path, const std::string& method = "GET");
     std::vector<std::string> routePaths() const;
+    std::vector<std::string> componentSources() const;
+    std::vector<std::string> inlineTemplateSources() const;
 
     Interpreter& interpreter();
 
   private:
+    std::shared_ptr<Program> parseProgram(std::string_view sourceName, const std::string& source);
+    void executeProgram(const std::string& sourceName, const std::shared_ptr<Program>& program);
     void importFile(const std::string& path, const SourceSpan& span);
 
     bool debugAst_ = false;
@@ -42,6 +50,7 @@ class RuntimeSession {
     std::unordered_set<std::string> importedFiles_;
     std::vector<std::string> sourceStack_;
     std::unordered_map<std::string, std::string> sourceCache_;
+    std::unordered_map<std::string, std::shared_ptr<Program>> parsedPrograms_;
 };
 
 }  // namespace wevoaweb

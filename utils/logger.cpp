@@ -16,6 +16,7 @@ constexpr const char* kColorGreen = "\x1b[32m";
 constexpr const char* kColorYellow = "\x1b[33m";
 constexpr const char* kColorRed = "\x1b[31m";
 constexpr const char* kColorWhite = "\x1b[37m";
+constexpr const char* kColorMagenta = "\x1b[35m";
 
 }  // namespace
 
@@ -27,6 +28,22 @@ void Logger::wevoa(const std::string& message) {
 
 void Logger::info(const std::string& message) {
     log(LogLevel::Info, message);
+}
+
+void Logger::warn(const std::string& message) {
+    log(LogLevel::Warn, message);
+}
+
+void Logger::perf(const std::string& message) {
+    log(LogLevel::Perf, message);
+}
+
+void Logger::route(const std::string& message) {
+    log(LogLevel::Route, message);
+}
+
+void Logger::build(const std::string& message) {
+    log(LogLevel::Build, message);
 }
 
 void Logger::watch(const std::string& message) {
@@ -64,6 +81,14 @@ const char* Logger::tag(LogLevel level) const {
             return "Wevoa";
         case LogLevel::Info:
             return "INFO";
+        case LogLevel::Warn:
+            return "WARN";
+        case LogLevel::Perf:
+            return "PERF";
+        case LogLevel::Route:
+            return "ROUTE";
+        case LogLevel::Build:
+            return "BUILD";
         case LogLevel::Watch:
             return "WATCH";
         case LogLevel::Error:
@@ -81,6 +106,14 @@ const char* Logger::color(LogLevel level) const {
             return kColorBlue;
         case LogLevel::Info:
             return kColorWhite;
+        case LogLevel::Warn:
+            return kColorYellow;
+        case LogLevel::Perf:
+            return kColorMagenta;
+        case LogLevel::Route:
+            return kColorBlue;
+        case LogLevel::Build:
+            return kColorMagenta;
         case LogLevel::Watch:
             return kColorYellow;
         case LogLevel::Error:

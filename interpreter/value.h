@@ -29,6 +29,8 @@ class Value {
     Value(const char* value);
     Value(bool value);
     Value(std::shared_ptr<Callable> value);
+    Value(std::shared_ptr<Array> value);
+    Value(std::shared_ptr<Object> value);
     Value(Array value);
     Value(Object value);
 

@@ -21,6 +21,7 @@ class Parser {
     std::unique_ptr<Stmt> importDeclaration();
     std::unique_ptr<Stmt> functionDeclaration();
     std::unique_ptr<Stmt> routeDeclaration();
+    std::unique_ptr<Stmt> componentDeclaration();
     std::unique_ptr<Stmt> variableDeclaration(const Token& keyword, bool expectTerminator);
 
     std::unique_ptr<Stmt> statement();

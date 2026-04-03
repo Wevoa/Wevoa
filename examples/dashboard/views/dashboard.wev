@@ -1,0 +1,32 @@
+extend "layout.wev"
+
+section content {
+<section class="panel dashboard-panel">
+  <div class="eyebrow">Protected Route</div>
+  <h1>Welcome back, {{ user_name }}</h1>
+  <p class="lead">This page uses SQLite for user storage and cookie sessions for access control.</p>
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="stat-label">Current user</span>
+      <strong>{{ user_email }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">Users in database</span>
+      <strong>{{ user_count }}</strong>
+    </article>
+  </div>
+
+  <section class="user-list">
+    <h2>Registered users</h2>
+    <div class="table">
+      {% for user in users %}
+      <article class="row">
+        <strong>{{ user.name }}</strong>
+        <span>{{ user.email }}</span>
+      </article>
+      {% end %}
+    </div>
+  </section>
+</section>
+}

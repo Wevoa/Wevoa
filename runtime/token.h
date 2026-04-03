@@ -39,6 +39,7 @@ enum class TokenType {
     Const,
     Func,
     Route,
+    Component,
     If,
     Else,
     While,
@@ -124,6 +125,8 @@ inline std::string_view tokenTypeName(TokenType type) {
             return "Func";
         case TokenType::Route:
             return "Route";
+        case TokenType::Component:
+            return "Component";
         case TokenType::If:
             return "If";
         case TokenType::Else:

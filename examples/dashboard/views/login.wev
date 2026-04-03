@@ -1,0 +1,27 @@
+extend "layout.wev"
+
+section content {
+<section class="panel auth-panel">
+  <div class="eyebrow">Example Auth Flow</div>
+  <h1>Sign in</h1>
+  <p class="lead">Use the demo account to enter the protected dashboard.</p>
+
+  {% if error %}
+  <div class="notice">{{ error }}</div>
+  {% end %}
+
+  <form class="auth-form" method="POST" action="/login">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <label>
+      <span>Email</span>
+      <input type="email" name="email" value="{{ email }}" placeholder="admin@wevoa.dev">
+    </label>
+    <label>
+      <span>Password</span>
+      <input type="password" name="password" placeholder="demo123">
+    </label>
+    <button class="button button-primary" type="submit">Login</button>
+  </form>
+  <p class="hint">Demo credentials: <strong>admin@wevoa.dev</strong> / <strong>demo123</strong></p>
+</section>
+}

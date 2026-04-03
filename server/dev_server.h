@@ -62,6 +62,7 @@ class DevServer {
     std::mutex stateMutex_;
     std::mutex reloadMutex_;
     std::mutex threadFailureMutex_;
+    std::mutex perfMutex_;
 
     std::string pendingReloadReason_;
     std::string threadFailureMessage_;
@@ -69,6 +70,10 @@ class DevServer {
     std::atomic<bool> shutdownRequested_ = false;
     std::atomic<bool> reloadRequested_ = false;
     std::atomic<bool> threadFailed_ = false;
+    std::uint64_t totalRequests_ = 0;
+    std::uint64_t totalRequestMicros_ = 0;
+    std::uint64_t maxRequestMicros_ = 0;
+    bool openBrowserOnStart_ = true;
 };
 
 }  // namespace wevoaweb::server

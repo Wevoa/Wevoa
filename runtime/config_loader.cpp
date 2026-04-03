@@ -327,6 +327,10 @@ Value loadConfigFile(const std::filesystem::path& path) {
     return value;
 }
 
+Value parseJsonString(const std::string& source) {
+    return JsonParser(source).parse();
+}
+
 std::string serializeJson(const Value& value) {
     std::ostringstream stream;
     writeJsonValue(stream, value, 0);

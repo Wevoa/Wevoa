@@ -1,5 +1,6 @@
 #include "server/serve_server.h"
 
+#include <algorithm>
 #include <chrono>
 #include <limits>
 #include <optional>
@@ -8,6 +9,7 @@
 
 #include "runtime/config_loader.h"
 #include "utils/project_layout.h"
+#include "utils/version.h"
 
 namespace wevoaweb::server {
 
@@ -48,6 +50,40 @@ Value withProductionEnvironment(Value config) {
     return config;
 }
 
+void logApplicationSummary(Logger& logger, const WebApplication& application) {
+    const auto routes = application.routePaths();
+    const auto views = application.viewPaths();
+    logger.info("Loaded routes: " + std::to_string(routes.size()));
+    logger.info("Loaded views: " + std::to_string(views.size()));
+    logger.info("Worker threads: " + std::to_string(application.workerThreads()));
+    logger.info("Max queue size: " + std::to_string(application.maxQueueSize()));
+    logger.info("Template cache: " + std::to_string(application.templateCacheLimit()));
+    logger.info("Fragment cache: " + std::to_string(application.fragmentCacheLimit()));
+    logger.info("Session TTL: " + std::to_string(application.sessionTimeToLiveSeconds()) + "s");
+    logger.info("Max sessions: " + std::to_string(application.maxSessionCount()));
+    for (const auto& route : routes) {
+        logger.route("Serving " + route);
+    }
+}
+
+void logPerformanceSummary(Logger& logger, std::uint64_t totalRequests, std::uint64_t totalMicros, std::uint64_t maxMicros) {
+    if (totalRequests == 0) {
+        return;
+    }
+
+    const double averageMs = static_cast<double>(totalMicros) / static_cast<double>(totalRequests) / 1000.0;
+    const double maxMs = static_cast<double>(maxMicros) / 1000.0;
+    logger.perf("avg: " + std::to_string(averageMs) + "ms | max: " + std::to_string(maxMs) +
+                "ms | requests: " + std::to_string(totalRequests));
+}
+
+std::string formatMetrics(const HttpResponse& response) {
+    return " [" + std::to_string(response.requestMicros / 1000.0) + "ms total, " +
+           std::to_string(response.routeMicros / 1000.0) + "ms route, " +
+           std::to_string(response.templateMicros / 1000.0) + "ms templates, " +
+           std::to_string(response.dbMicros / 1000.0) + "ms db]";
+}
+
 }  // namespace
 
 ServeServer::ServeServer(ServeCommandOptions options,
@@ -67,6 +103,7 @@ ServeServer::~ServeServer() {
 
 int ServeServer::run() {
     logger_.wevoa("Starting production server...");
+    logger_.wevoa(std::string(kWevoaRuntimeName) + " v" + kWevoaVersion);
 
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
@@ -88,6 +125,10 @@ int ServeServer::run() {
     }
 
     logger_.wevoa("Shutting down...");
+    if (application_ != nullptr && application_->performanceMetricsEnabled()) {
+        std::lock_guard<std::mutex> lock(perfMutex_);
+        logPerformanceSummary(logger_, totalRequests_, totalRequestMicros_, maxRequestMicros_);
+    }
     stopServer();
     logger_.wevoa("Server stopped");
     return 0;
@@ -115,18 +156,35 @@ std::unique_ptr<WebApplication> ServeServer::loadApplication() {
 }
 
 void ServeServer::handleRequest(const HttpRequest& request, const HttpResponse& response) {
+    const std::string timing = application_ != nullptr && application_->performanceMetricsEnabled()
+                                   ? formatMetrics(response)
+                                   : "";
+    if (application_ != nullptr && application_->performanceMetricsEnabled() && request.method != "QUEUE") {
+        std::lock_guard<std::mutex> lock(perfMutex_);
+        ++totalRequests_;
+        totalRequestMicros_ += response.requestMicros;
+        maxRequestMicros_ = std::max(maxRequestMicros_, response.requestMicros);
+    }
+    if (response.statusCode == 503) {
+        logger_.warn("queue overflow" + timing);
+        return;
+    }
     if (response.statusCode == 404) {
-        logger_.error("Route not found: " + request.method + " " + request.path);
+        logger_.error("Route not found: " + request.method + " " + request.path + timing);
         return;
     }
 
     if (response.statusCode >= 500) {
-        logger_.error("Request failed: " + request.method + " " + request.path + " -> " +
-                      std::to_string(response.statusCode));
+        std::string message = "Request failed: " + request.method + " " + request.path + " -> " +
+                              std::to_string(response.statusCode) + timing;
+        if (!response.debugMessage.empty()) {
+            message += "\n" + response.debugMessage;
+        }
+        logger_.error(message);
         return;
     }
 
-    logger_.info("Request: " + request.method + " " + request.path + " -> " + std::to_string(response.statusCode));
+    logger_.route(request.method + " " + request.path + " -> " + std::to_string(response.statusCode) + timing);
 }
 
 void ServeServer::stopServer() {
@@ -157,7 +215,9 @@ void ServeServer::launchServerLocked() {
     httpServer_ = std::make_unique<HttpServer>(
         *application_,
         options_.port,
-        [this](const HttpRequest& request, const HttpResponse& response) { handleRequest(request, response); });
+        [this](const HttpRequest& request, const HttpResponse& response) { handleRequest(request, response); },
+        application_->workerThreads(),
+        application_->maxQueueSize());
 
     HttpServer* server = httpServer_.get();
     serverThread_ = std::thread([this, server]() {
@@ -176,6 +236,8 @@ void ServeServer::launchServerLocked() {
         stopServerLocked();
         throw std::runtime_error(failure);
     }
+
+    logApplicationSummary(logger_, *application_);
 }
 
 void ServeServer::reportThreadFailure(const std::string& message) {

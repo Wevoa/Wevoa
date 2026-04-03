@@ -25,6 +25,8 @@ class Callable {
     virtual std::optional<std::size_t> arity() const = 0;
     virtual Value call(Interpreter& interpreter, const std::vector<Value>& arguments, const SourceSpan& span) const = 0;
     virtual std::string debugName() const = 0;
+    virtual std::shared_ptr<Callable> clone(
+        const std::function<std::shared_ptr<Environment>(const std::shared_ptr<Environment>&)>& cloneEnvironment) const = 0;
 };
 
 class NativeFunction final : public Callable {
@@ -34,6 +36,8 @@ class NativeFunction final : public Callable {
     std::optional<std::size_t> arity() const override;
     Value call(Interpreter& interpreter, const std::vector<Value>& arguments, const SourceSpan& span) const override;
     std::string debugName() const override;
+    std::shared_ptr<Callable> clone(
+        const std::function<std::shared_ptr<Environment>(const std::shared_ptr<Environment>&)>& cloneEnvironment) const override;
 
   private:
     std::string name_;
@@ -48,6 +52,8 @@ class WevoaFunction final : public Callable {
     std::optional<std::size_t> arity() const override;
     Value call(Interpreter& interpreter, const std::vector<Value>& arguments, const SourceSpan& span) const override;
     std::string debugName() const override;
+    std::shared_ptr<Callable> clone(
+        const std::function<std::shared_ptr<Environment>(const std::shared_ptr<Environment>&)>& cloneEnvironment) const override;
 
   private:
     const FuncDeclStmt* declaration_;

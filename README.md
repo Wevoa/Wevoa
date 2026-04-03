@@ -13,6 +13,20 @@
 
 WevoaWeb combines a small programming language, a tree-walk interpreter, a built-in HTTP dev server, and a CLI for creating and running server-rendered apps. The browser receives plain HTML and static assets only.
 
+## Recommended Install
+
+For normal Windows users, the recommended distribution path is the GUI installer:
+
+- `dist\installer\WevoaSetup.exe`
+
+That installs the runtime globally, adds it to `PATH`, and makes `wevoa` available from any new terminal.
+
+Expected version output:
+
+```text
+WevoaWeb Runtime 786.0.0
+```
+
 ## Why It Stands Out
 
 - Original implementation from lexer to server runtime
@@ -20,10 +34,31 @@ WevoaWeb combines a small programming language, a tree-walk interpreter, a built
 - Lightweight codebase that is easy to read and extend
 - Modern C++17 architecture with clear language layers
 - Built-in developer workflow with `wevoa start` and `wevoa create`
-- Template control flow with `{% if %}` and `{% for %}`
-- Clean starter UI for new projects
+- Response helpers with `json()`, `redirect()`, and `status()`
+- Dynamic route parameters, middleware, and cookie-backed sessions
+- Template control flow with `{% if %}`, `{% for %}`, and reusable components
+- Password hashing, CSRF helpers, SQL migrations, and local package installation
+- Clean starter UI, docs page, and example form for new projects
 
 ## Quick Start
+
+Installed runtime flow:
+
+```text
+wevoa --version
+wevoa create app
+cd app
+wevoa start
+```
+
+What each step does:
+
+- `wevoa --version` confirms the runtime is installed globally
+- `wevoa create app` creates a starter project
+- `cd app` moves into the generated project
+- `wevoa start` launches the development server
+
+Source build flow:
 
 Build:
 
@@ -31,15 +66,18 @@ Build:
 g++ -std=c++17 -Wall -Wextra -pedantic -I. main.cpp `
     cli/cli_handler.cpp `
     cli/build_pipeline.cpp `
+    cli/migration_manager.cpp `
+    cli/package_manager.cpp `
+    cli/project_inspector.cpp `
     cli/project_creator.cpp `
     lexer/lexer.cpp parser/parser.cpp ast/ast.cpp `
     interpreter/value.cpp interpreter/environment.cpp `
     interpreter/callable.cpp interpreter/interpreter.cpp interpreter/route.cpp `
     runtime/builtins.cpp runtime/ast_printer.cpp runtime/session.cpp `
     runtime/template_engine.cpp runtime/config_loader.cpp runtime/sqlite_module.cpp `
-    server/http_types.cpp server/web_app.cpp server/http_server.cpp server/dev_server.cpp server/serve_server.cpp `
+    server/http_types.cpp server/web_app.cpp server/http_server.cpp server/dev_server.cpp server/serve_server.cpp server/session_store.cpp `
     watcher/file_watcher.cpp `
-    utils/logger.cpp utils/keyboard.cpp utils/file_writer.cpp utils/project_layout.cpp `
+    utils/logger.cpp utils/keyboard.cpp utils/file_writer.cpp utils/project_layout.cpp utils/browser_launcher.cpp utils/security.cpp `
     -o wevoa.exe -lws2_32 -lsqlite3
 ```
 
@@ -70,12 +108,27 @@ Check the runtime version:
 .\wevoa.exe --version
 ```
 
+Versioning is centralized in [utils/version.h](/d:/Wevoaweb_Language/utils/version.h), so the runtime, build artifacts, and installer all read from one source of truth.
+
+Inspect the current project:
+
+```powershell
+..\wevoa.exe doctor
+..\wevoa.exe info --global
+```
+
 ## Release Builds
 
 Windows:
 
 ```powershell
 .\scripts\build-release.ps1
+```
+
+Windows installer:
+
+```powershell
+.\scripts\build-installer.ps1
 ```
 
 Linux:
@@ -90,6 +143,7 @@ Optional static-runtime attempt:
 - Bash: `STATIC_RUNTIME=1 ./scripts/build-release.sh`
 
 These produce release binaries under `dist/`.
+The Windows installer script produces `dist\installer\WevoaSetup.exe` when Inno Setup is installed.
 
 ## Language Snapshot
 
@@ -114,10 +168,15 @@ Current language features:
 - blocks, `if / else`, `loop`, `while`, `break`, and `continue`
 - functions, `return`, lexical closures, and `import`
 - built-in `print()`, `input()`, `view()`, `len()`, and `append()`
+- security helpers `hash()`, `verify()`, and `verify_csrf()`
+- response helpers `json()`, `redirect()`, and `status()`
 - `html { ... }` inline templates and `.wev` file views with `{{ expression }}`
-- template control flow with `{% if %}`, `{% else %}`, `{% for %}`, and `{% end %}`
-- `route` declarations with `GET` and `POST`
+- template control flow with `{% if %}`, `{% else %}`, `{% for %}`, `{% end %}`, `include`, and self-closing components
+- `route` declarations with `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, middleware, and dynamic segments like `:id`
+- request helpers `request.method()`, `request.query()`, `request.form()`, `request.json()`, and `request.csrf()`
+- cookie-backed sessions through `session.get()`, `session.set()`, and `session.delete()`
 - native SQLite access through `sqlite.open()`, `db.exec()`, `db.query()`, and `db.scalar()`
+- `wevoa migrate`, `wevoa make:migration`, and `wevoa install`
 - source-aware lexer, parser, template, and runtime diagnostics
 
 ## Runtime Flow
@@ -168,11 +227,18 @@ wevoa --version
 wevoa create my-app
 ```
 
+GUI installation on Windows:
+
+- Install Inno Setup
+- Run `.\scripts\build-installer.ps1`
+- Launch `dist\installer\WevoaSetup.exe`
+
 ## Documentation
 
 - [Quick Start](docs/quickstart.md)
 - [Language Reference](docs/language-reference.md)
 - [Architecture](docs/architecture.md)
+- [Distribution Strategy](docs/distribution-strategy.md)
 - [Roadmap](ROADMAP.md)
 - [Changelog](CHANGELOG.md)
 

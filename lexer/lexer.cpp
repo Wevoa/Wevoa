@@ -273,6 +273,7 @@ void Lexer::identifier() {
         {"const", TokenType::Const},
         {"func", TokenType::Func},
         {"route", TokenType::Route},
+        {"component", TokenType::Component},
         {"if", TokenType::If},
         {"else", TokenType::Else},
         {"while", TokenType::While},

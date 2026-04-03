@@ -66,6 +66,10 @@ std::unique_ptr<Stmt> Parser::declaration() {
         return routeDeclaration();
     }
 
+    if (match({TokenType::Component})) {
+        return componentDeclaration();
+    }
+
     if (match({TokenType::Let, TokenType::Const})) {
         return variableDeclaration(previous(), true);
     }
@@ -104,6 +108,7 @@ std::unique_ptr<Stmt> Parser::routeDeclaration() {
     const Token keyword = previous();
     auto path = expression();
     std::string method = "GET";
+    std::vector<Token> middleware;
 
     skipSeparators();
     if (check(TokenType::Identifier) && peek().lexeme == "method") {
@@ -117,13 +122,50 @@ std::unique_ptr<Stmt> Parser::routeDeclaration() {
         skipSeparators();
     }
 
+    if (check(TokenType::Identifier) && peek().lexeme == "middleware") {
+        advance();
+
+        do {
+            middleware.push_back(consume(TokenType::Identifier, "Expected middleware name after 'middleware'."));
+        } while (match({TokenType::Comma}));
+
+        skipSeparators();
+    }
+
     const Token& leftBrace = consume(TokenType::LeftBrace, "Expected '{' before route body.");
     auto body = blockStatement(leftBrace);
     return std::make_unique<RouteDeclStmt>(keyword,
                                            std::move(path),
                                            std::move(method),
+                                           std::move(middleware),
                                            std::move(body),
                                            SourceSpan {keyword.span.start, body->span.end});
+}
+
+std::unique_ptr<Stmt> Parser::componentDeclaration() {
+    const Token keyword = previous();
+    Token name;
+    if (check(TokenType::Identifier) || check(TokenType::String)) {
+        name = advance();
+    } else {
+        throw ParseError("Expected component name.", peek().span);
+    }
+
+    consume(TokenType::LeftBrace, "Expected '{' before component body.");
+    skipSeparators();
+    consume(TokenType::Html, "Expected html block inside component.");
+    auto body = htmlBlock(previous());
+    const auto* html = dynamic_cast<HtmlExpr*>(body.get());
+    if (html == nullptr) {
+        throw ParseError("Component body must be an html block.", body->span);
+    }
+    skipSeparators();
+    const Token& rightBrace = consume(TokenType::RightBrace, "Expected '}' after component body.");
+    skipSeparators();
+    return std::make_unique<ComponentDeclStmt>(keyword,
+                                               std::move(name),
+                                               html->source,
+                                               SourceSpan {keyword.span.start, rightBrace.span.end});
 }
 
 std::unique_ptr<Stmt> Parser::variableDeclaration(const Token& keyword, bool expectTerminator) {

@@ -49,9 +49,13 @@ class ServeServer {
     std::thread serverThread_;
     std::mutex stateMutex_;
     std::mutex threadFailureMutex_;
+    std::mutex perfMutex_;
     std::string threadFailureMessage_;
     std::atomic<bool> shutdownRequested_ = false;
     std::atomic<bool> threadFailed_ = false;
+    std::uint64_t totalRequests_ = 0;
+    std::uint64_t totalRequestMicros_ = 0;
+    std::uint64_t maxRequestMicros_ = 0;
 };
 
 }  // namespace wevoaweb::server

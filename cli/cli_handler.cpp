@@ -46,6 +46,42 @@ CLIHandler::Command CLIHandler::parse(int argc, char** argv) const {
         return command;
     }
 
+    if (subcommand == "doctor") {
+        command.type = CommandType::Doctor;
+        for (int index = 2; index < argc; ++index) {
+            const std::string argument = argv[index];
+            if (argument == "--app" || argument == "--views" || argument == "--public") {
+                if (index + 1 >= argc) {
+                    throw CLIUsageError(argument + " requires a value.");
+                }
+                applyProjectOption(command.inspectOptions, argument, argv[++index]);
+            } else if (argument == "--global") {
+                command.inspectOptions.globalMode = true;
+            } else {
+                throw CLIUsageError("Unknown option for doctor: " + argument);
+            }
+        }
+        return command;
+    }
+
+    if (subcommand == "info") {
+        command.type = CommandType::Info;
+        for (int index = 2; index < argc; ++index) {
+            const std::string argument = argv[index];
+            if (argument == "--app" || argument == "--views" || argument == "--public") {
+                if (index + 1 >= argc) {
+                    throw CLIUsageError(argument + " requires a value.");
+                }
+                applyProjectOption(command.inspectOptions, argument, argv[++index]);
+            } else if (argument == "--global") {
+                command.inspectOptions.globalMode = true;
+            } else {
+                throw CLIUsageError("Unknown option for info: " + argument);
+            }
+        }
+        return command;
+    }
+
     if (subcommand == "build") {
         command.type = CommandType::Build;
         for (int index = 2; index < argc; ++index) {
@@ -68,6 +104,28 @@ CLIHandler::Command CLIHandler::parse(int argc, char** argv) const {
         return command;
     }
 
+    if (subcommand == "migrate") {
+        if (argc > 2) {
+            throw CLIUsageError("migrate does not accept extra arguments.");
+        }
+
+        command.type = CommandType::Migrate;
+        return command;
+    }
+
+    if (subcommand == "make:migration") {
+        if (argc < 3) {
+            throw CLIUsageError("make:migration requires a migration name.");
+        }
+        if (argc > 3) {
+            throw CLIUsageError("make:migration accepts exactly one migration name.");
+        }
+
+        command.type = CommandType::MakeMigration;
+        command.migrationName = argv[2];
+        return command;
+    }
+
     if (subcommand == "create") {
         if (argc < 3) {
             throw CLIUsageError("create requires a project name.");
@@ -79,6 +137,27 @@ CLIHandler::Command CLIHandler::parse(int argc, char** argv) const {
 
         command.type = CommandType::Create;
         command.projectName = argv[2];
+        return command;
+    }
+
+    if (subcommand == "install") {
+        if (argc < 3) {
+            throw CLIUsageError("install requires a package name or local path.");
+        }
+        if (argc > 4) {
+            throw CLIUsageError("install accepts a package source and optional --global flag.");
+        }
+
+        command.type = CommandType::Install;
+        command.packageName = argv[2];
+        for (int index = 3; index < argc; ++index) {
+            const std::string argument = argv[index];
+            if (argument == "--global") {
+                command.installOptions.globalMode = true;
+            } else {
+                throw CLIUsageError("Unknown option for install: " + argument);
+            }
+        }
         return command;
     }
 
@@ -159,6 +238,11 @@ void CLIHandler::printHelp(const std::string& executableName) const {
     std::cout << "  " << executableName << " create <project-name>\n";
     std::cout << "  " << executableName << " build [--output build]\n";
     std::cout << "  " << executableName << " serve [--port 3000] [--output build]\n";
+    std::cout << "  " << executableName << " migrate\n";
+    std::cout << "  " << executableName << " make:migration <name>\n";
+    std::cout << "  " << executableName << " install <package-or-path>\n";
+    std::cout << "  " << executableName << " doctor\n";
+    std::cout << "  " << executableName << " info\n";
     std::cout << "  " << executableName << " --version\n";
     std::cout << "  " << executableName << " help\n";
     std::cout << '\n';
@@ -167,6 +251,11 @@ void CLIHandler::printHelp(const std::string& executableName) const {
     std::cout << "  create       Generate a new WevoaWeb project scaffold\n";
     std::cout << "  build        Validate and bundle the current app into a production output folder\n";
     std::cout << "  serve        Run the built app from the production output folder\n";
+    std::cout << "  migrate      Apply pending SQL migrations in the current project\n";
+    std::cout << "  make:migration Create a new SQL migration stub in the current project\n";
+    std::cout << "  install      Install a local package into packages/\n";
+    std::cout << "  doctor       Validate the current project structure and runtime readiness\n";
+    std::cout << "  info         Show details about the current project and runtime\n";
     std::cout << "  --version    Print the installed WevoaWeb runtime version\n";
     std::cout << "  help         Show this help message\n";
     std::cout << '\n';

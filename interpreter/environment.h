@@ -12,6 +12,11 @@ namespace wevoaweb {
 
 class Environment {
   public:
+    struct Binding {
+        Value value;
+        bool isConstant = false;
+    };
+
     explicit Environment(std::shared_ptr<Environment> enclosing = nullptr);
 
     void define(const Token& name, Value value, bool isConstant);
@@ -25,13 +30,10 @@ class Environment {
 
     bool exists(const std::string& name) const;
     bool existsLocal(const std::string& name) const;
+    const std::unordered_map<std::string, Binding>& bindings() const;
+    const std::shared_ptr<Environment>& enclosing() const;
 
   private:
-    struct Binding {
-        Value value;
-        bool isConstant = false;
-    };
-
     std::unordered_map<std::string, Binding> values_;
     std::shared_ptr<Environment> enclosing_;
 };

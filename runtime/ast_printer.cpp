@@ -94,8 +94,20 @@ void AstPrinter::printStmt(const Stmt& stmt, int indent, std::string& output) co
         appendLine(output, indent, "RouteDecl " + route->method);
         appendLine(output, indent + 1, "Path");
         printExpr(*route->path, indent + 2, output);
+        if (!route->middleware.empty()) {
+            appendLine(output, indent + 1, "Middleware");
+            for (const auto& middleware : route->middleware) {
+                appendLine(output, indent + 2, middleware.lexeme);
+            }
+        }
         appendLine(output, indent + 1, "Body");
         printStmt(*route->body, indent + 2, output);
+        return;
+    }
+
+    if (const auto* component = dynamic_cast<const ComponentDeclStmt*>(&stmt)) {
+        appendLine(output, indent, "ComponentDecl " + component->name.lexeme);
+        appendLine(output, indent + 1, component->source);
         return;
     }
 

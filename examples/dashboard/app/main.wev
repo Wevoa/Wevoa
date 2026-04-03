@@ -1,0 +1,61 @@
+let db = sqlite.open("storage/dashboard.sqlite")
+
+db.exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT NOT NULL)")
+
+if (db.scalar("SELECT COUNT(*) FROM users") == 0) {
+db.exec("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", ["Admin", "admin@wevoa.dev", "demo123"])
+}
+
+route "/" {
+return redirect("/login")
+}
+
+route "/login" {
+return view("login.wev", {
+  title: "Login",
+  csrf: request.csrf(),
+  error: "",
+  email: ""
+})
+}
+
+route "/login" method POST {
+let email = request.form("email")
+let password = request.form("password")
+let rows = db.query("SELECT id, name, email FROM users WHERE email = ? AND password = ?", [email, password])
+
+if (len(rows) == 0) {
+return status(401, view("login.wev", {
+  title: "Login",
+  csrf: request.csrf(),
+  error: "Invalid credentials. Try admin@wevoa.dev / demo123",
+  email: email
+}))
+}
+
+session.set("user_id", rows[0].id)
+session.set("user_name", rows[0].name)
+session.set("user_email", rows[0].email)
+return redirect("/dashboard")
+}
+
+route "/dashboard" {
+if (!session.get("user_id")) {
+return redirect("/login")
+}
+
+return view("dashboard.wev", {
+  title: "Dashboard",
+  user_name: session.get("user_name"),
+  user_email: session.get("user_email"),
+  user_count: db.scalar("SELECT COUNT(*) FROM users"),
+  users: db.query("SELECT name, email FROM users ORDER BY id ASC")
+})
+}
+
+route "/logout" {
+session.delete("user_id")
+session.delete("user_name")
+session.delete("user_email")
+return redirect("/login")
+}
