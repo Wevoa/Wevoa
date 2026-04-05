@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <iomanip>
 #include <random>
 #include <sstream>
@@ -131,14 +132,119 @@ std::string toHex(const std::vector<std::uint8_t>& bytes) {
     return stream.str();
 }
 
-std::string hashPasswordWithSalt(const std::string& password,
-                                 const std::string& salt,
-                                 std::uint32_t iterations) {
+std::string bytesToString(const std::vector<std::uint8_t>& bytes) {
+    return std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+}
+
+bool constantTimeEquals(std::string_view left, std::string_view right) {
+    if (left.size() != right.size()) {
+        return false;
+    }
+
+    unsigned char difference = 0;
+    for (std::size_t index = 0; index < left.size(); ++index) {
+        difference |= static_cast<unsigned char>(left[index] ^ right[index]);
+    }
+    return difference == 0;
+}
+
+std::vector<std::uint8_t> hmacSha256(const std::string& key, const std::string& message) {
+    constexpr std::size_t kBlockSize = 64;
+
+    std::vector<std::uint8_t> keyBlock(kBlockSize, 0);
+    std::vector<std::uint8_t> keyBytes(key.begin(), key.end());
+    if (keyBytes.size() > kBlockSize) {
+        keyBytes = sha256Bytes(key);
+    }
+    std::copy(keyBytes.begin(), keyBytes.end(), keyBlock.begin());
+
+    std::vector<std::uint8_t> innerPad(kBlockSize);
+    std::vector<std::uint8_t> outerPad(kBlockSize);
+    for (std::size_t index = 0; index < kBlockSize; ++index) {
+        innerPad[index] = static_cast<std::uint8_t>(keyBlock[index] ^ 0x36U);
+        outerPad[index] = static_cast<std::uint8_t>(keyBlock[index] ^ 0x5cU);
+    }
+
+    const std::vector<std::uint8_t> innerHash = sha256Bytes(bytesToString(innerPad) + message);
+    return sha256Bytes(bytesToString(outerPad) + bytesToString(innerHash));
+}
+
+std::string legacyHashPasswordWithSalt(const std::string& password,
+                                       const std::string& salt,
+                                       std::uint32_t iterations) {
     std::string digest = password + ":" + salt;
     for (std::uint32_t iteration = 0; iteration < iterations; ++iteration) {
         digest = toHex(sha256Bytes(digest + ":" + password + ":" + salt));
     }
     return digest;
+}
+
+std::string pbkdf2HashPasswordWithSalt(const std::string& password,
+                                       const std::string& salt,
+                                       std::uint32_t iterations) {
+    if (iterations == 0) {
+        throw std::runtime_error("PBKDF2 iteration count must be greater than zero.");
+    }
+
+    constexpr std::size_t kDerivedKeyLength = 32;
+    constexpr std::size_t kDigestLength = 32;
+
+    std::vector<std::uint8_t> derivedKey;
+    derivedKey.reserve(kDerivedKeyLength);
+
+    const std::size_t blockCount = (kDerivedKeyLength + kDigestLength - 1) / kDigestLength;
+    for (std::uint32_t blockIndex = 1; blockIndex <= blockCount; ++blockIndex) {
+        std::string blockSalt = salt;
+        blockSalt.push_back(static_cast<char>((blockIndex >> 24) & 0xFF));
+        blockSalt.push_back(static_cast<char>((blockIndex >> 16) & 0xFF));
+        blockSalt.push_back(static_cast<char>((blockIndex >> 8) & 0xFF));
+        blockSalt.push_back(static_cast<char>(blockIndex & 0xFF));
+
+        std::vector<std::uint8_t> u = hmacSha256(password, blockSalt);
+        std::vector<std::uint8_t> block = u;
+        for (std::uint32_t iteration = 1; iteration < iterations; ++iteration) {
+            u = hmacSha256(password, bytesToString(u));
+            for (std::size_t index = 0; index < block.size(); ++index) {
+                block[index] ^= u[index];
+            }
+        }
+
+        derivedKey.insert(derivedKey.end(), block.begin(), block.end());
+    }
+
+    derivedKey.resize(kDerivedKeyLength);
+    return toHex(derivedKey);
+}
+
+bool verifyEncodedHash(const std::string& password,
+                       const std::string& encodedHash,
+                       std::string_view prefix,
+                       const std::function<std::string(const std::string&, const std::string&, std::uint32_t)>&
+                           deriveDigest) {
+    if (encodedHash.rfind(prefix.data(), 0) != 0) {
+        return false;
+    }
+
+    const auto first = encodedHash.find('$', prefix.size());
+    if (first == std::string::npos) {
+        return false;
+    }
+    const auto second = encodedHash.find('$', first + 1);
+    if (second == std::string::npos) {
+        return false;
+    }
+
+    std::uint32_t iterations = 0;
+    try {
+        iterations = static_cast<std::uint32_t>(std::stoul(encodedHash.substr(prefix.size(), first - prefix.size())));
+    } catch (...) {
+        return false;
+    }
+
+    const std::string salt = encodedHash.substr(first + 1, second - first - 1);
+    const std::string expectedDigest = encodedHash.substr(second + 1);
+    const std::string actualDigest = deriveDigest(password, salt, iterations);
+    return constantTimeEquals(actualDigest, expectedDigest);
 }
 
 }  // namespace
@@ -161,43 +267,20 @@ std::string generateSecureToken(std::size_t byteCount) {
 }
 
 std::string hashPassword(const std::string& password) {
-    constexpr std::uint32_t kIterations = 12000;
+    constexpr std::uint32_t kIterations = 60000;
     const std::string salt = generateSecureToken(16);
-    const std::string digest = hashPasswordWithSalt(password, salt, kIterations);
-    return "wevoa$sha256$" + std::to_string(kIterations) + "$" + salt + "$" + digest;
+    const std::string digest = pbkdf2HashPasswordWithSalt(password, salt, kIterations);
+    return "wevoa$pbkdf2-sha256$" + std::to_string(kIterations) + "$" + salt + "$" + digest;
 }
 
 bool verifyPassword(const std::string& password, const std::string& encodedHash) {
-    constexpr std::string_view kPrefix = "wevoa$sha256$";
-    if (encodedHash.rfind(kPrefix.data(), 0) != 0) {
-        return false;
+    constexpr std::string_view kPbkdf2Prefix = "wevoa$pbkdf2-sha256$";
+    if (verifyEncodedHash(password, encodedHash, kPbkdf2Prefix, pbkdf2HashPasswordWithSalt)) {
+        return true;
     }
 
-    const auto first = encodedHash.find('$', kPrefix.size());
-    if (first == std::string::npos) {
-        return false;
-    }
-    const auto second = encodedHash.find('$', first + 1);
-    if (second == std::string::npos) {
-        return false;
-    }
-
-    const std::uint32_t iterations = static_cast<std::uint32_t>(std::stoul(encodedHash.substr(kPrefix.size(),
-                                                                                              first - kPrefix.size())));
-    const std::string salt = encodedHash.substr(first + 1, second - first - 1);
-    const std::string expectedDigest = encodedHash.substr(second + 1);
-    const std::string actualDigest = hashPasswordWithSalt(password, salt, iterations);
-
-    if (actualDigest.size() != expectedDigest.size()) {
-        return false;
-    }
-
-    unsigned char difference = 0;
-    for (std::size_t index = 0; index < actualDigest.size(); ++index) {
-        difference |= static_cast<unsigned char>(actualDigest[index] ^ expectedDigest[index]);
-    }
-
-    return difference == 0;
+    constexpr std::string_view kLegacyPrefix = "wevoa$sha256$";
+    return verifyEncodedHash(password, encodedHash, kLegacyPrefix, legacyHashPasswordWithSalt);
 }
 
 }  // namespace wevoaweb
