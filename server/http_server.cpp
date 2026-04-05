@@ -88,6 +88,26 @@ class SocketSystem final {
 constexpr int kSocketError = SOCKET_ERROR;
 #endif
 
+HttpResponse makePublicErrorResponse(int statusCode,
+                                     std::string reasonPhrase,
+                                     std::string body,
+                                     std::string debugMessage) {
+    HttpResponse response {
+        statusCode,
+        std::move(reasonPhrase),
+        "text/html; charset=utf-8",
+        std::move(body),
+        {},
+        0,
+        0,
+        0,
+        0,
+        "",
+    };
+    response.debugMessage = std::move(debugMessage);
+    return response;
+}
+
 class Socket final {
   public:
     Socket() = default;
@@ -825,17 +845,21 @@ void HttpServer::run() {
                             }
                         }
                     } catch (const WevoaError& error) {
-                        response.statusCode = 500;
-                        response.reasonPhrase = "Internal Server Error";
-                        response.body = "<h1>500 Internal Server Error</h1><p>" + std::string(error.what()) + "</p>";
+                        response = makePublicErrorResponse(
+                            500,
+                            "Internal Server Error",
+                            "<h1>500 Internal Server Error</h1><p>The server could not complete this request.</p>",
+                            error.what());
                         try {
                             sendAll(clientSocket.native(), response.serialize());
                         } catch (...) {
                         }
                     } catch (const std::exception& error) {
-                        response.statusCode = 400;
-                        response.reasonPhrase = "Bad Request";
-                        response.body = "<h1>400 Bad Request</h1><p>" + std::string(error.what()) + "</p>";
+                        response = makePublicErrorResponse(
+                            400,
+                            "Bad Request",
+                            "<h1>400 Bad Request</h1><p>The request could not be processed.</p>",
+                            error.what());
                         try {
                             sendAll(clientSocket.native(), response.serialize());
                         } catch (...) {
@@ -993,20 +1017,11 @@ HttpResponse HttpServer::dispatch(const HttpRequest& request) {
     try {
         return application_.render(request);
     } catch (const std::exception& error) {
-        HttpResponse response {
+        return makePublicErrorResponse(
             500,
             "Internal Server Error",
-            "text/html; charset=utf-8",
-            "<h1>500 Internal Server Error</h1><p>" + std::string(error.what()) + "</p>",
-            {},
-            0,
-            0,
-            0,
-            0,
-            "",
-        };
-        response.debugMessage = error.what();
-        return response;
+            "<h1>500 Internal Server Error</h1><p>The server could not complete this request.</p>",
+            error.what());
     }
 }
 
