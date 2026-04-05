@@ -27,6 +27,7 @@ struct StartCommandOptions : ProjectCommandOptions {
 
 struct BuildCommandOptions : ProjectCommandOptions {
     std::string outputDirectory = "build";
+    bool staticExport = false;
 };
 
 struct ServeCommandOptions {

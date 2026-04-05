@@ -102,6 +102,8 @@ CLIHandler::Command CLIHandler::parse(int argc, char** argv) const {
                     throw CLIUsageError(argument + " requires a value.");
                 }
                 applyProjectOption(command.buildOptions, argument, argv[++index]);
+            } else if (argument == "--static") {
+                command.buildOptions.staticExport = true;
             } else {
                 throw CLIUsageError("Unknown option for build: " + argument);
             }
@@ -282,7 +284,7 @@ void CLIHandler::printHelp(const std::string& executableName) const {
               << "] [--app app] [--views views] [--public public]\n";
     std::cout << "  " << executableName << " create <project-name>\n";
     std::cout << "  " << executableName << " create <template> <project-name>\n";
-    std::cout << "  " << executableName << " build [--output build]\n";
+    std::cout << "  " << executableName << " build [--output build] [--static]\n";
     std::cout << "  " << executableName << " serve [--port " << kDefaultPort << "] [--output build]\n";
     std::cout << "  " << executableName << " migrate\n";
     std::cout << "  " << executableName << " make:migration <name>\n";
@@ -298,7 +300,7 @@ void CLIHandler::printHelp(const std::string& executableName) const {
     std::cout << "Commands:\n";
     std::cout << "  start        Start the development server and file watcher\n";
     std::cout << "  create       Generate a new WevoaWeb project using the app or dashboard starter\n";
-    std::cout << "  build        Validate and bundle the current app into a production output folder\n";
+    std::cout << "  build        Validate and bundle the current app into a production output folder, optionally exporting static HTML\n";
     std::cout << "  serve        Run the built app from the production output folder\n";
     std::cout << "  migrate      Apply pending SQL migrations in the current project\n";
     std::cout << "  make:migration Create a new SQL migration stub in the current project\n";

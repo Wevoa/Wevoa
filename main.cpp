@@ -63,6 +63,10 @@ int main(int argc, char** argv) {
                 logger.build("Packages: " + std::to_string(result.packages.size()));
                 logger.build("Snapshot: " + (result.outputRoot / "wevoa.snapshot.json").string());
                 logger.build("Templates: " + (result.outputRoot / "wevoa.templates.json").string());
+                if (command.buildOptions.staticExport) {
+                    logger.build("Static output: " + result.staticOutputRoot.string());
+                    logger.build("Static pages: " + std::to_string(result.staticRoutes.size()));
+                }
                 return 0;
             }
 

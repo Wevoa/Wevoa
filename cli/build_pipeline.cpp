@@ -6,6 +6,7 @@
 #include <system_error>
 
 #include "runtime/config_loader.h"
+#include "server/http_types.h"
 #include "server/web_app.h"
 #include "utils/project_layout.h"
 #include "utils/version.h"
@@ -21,6 +22,37 @@ Value withProductionEnvironment(Value config) {
 
     config.asObject().insert_or_assign("env", Value("production"));
     return config;
+}
+
+struct RouteDescriptor {
+    std::string method;
+    std::string path;
+};
+
+RouteDescriptor parseRouteDescriptor(const std::string& descriptor) {
+    const auto separator = descriptor.find(' ');
+    if (separator == std::string::npos) {
+        return {"", descriptor};
+    }
+
+    return {descriptor.substr(0, separator), descriptor.substr(separator + 1)};
+}
+
+bool isStaticExportablePath(const std::string& path) {
+    return !path.empty() && path.front() == '/' && path.find(':') == std::string::npos;
+}
+
+std::filesystem::path staticRouteOutputPath(const std::filesystem::path& staticRoot, const std::string& routePath) {
+    if (routePath == "/") {
+        return staticRoot / "index.html";
+    }
+
+    const auto relative = std::filesystem::path(routePath.substr(1));
+    if (relative.filename().string().find('.') != std::string::npos) {
+        return staticRoot / relative;
+    }
+
+    return staticRoot / relative / "index.html";
 }
 
 }  // namespace
@@ -75,6 +107,33 @@ BuildResult BuildPipeline::build(const BuildCommandOptions& options, std::istrea
     result.assets = enumeratePublicAssets(outputRoot / "public");
     result.packages = enumeratePackageDirectories(outputRoot / "packages");
 
+    if (options.staticExport) {
+        result.staticOutputRoot = outputRoot / "static";
+        writer_.createDirectory(result.staticOutputRoot);
+        copyDirectoryContents(outputRoot / "public", result.staticOutputRoot);
+
+        for (const auto& descriptorText : result.routes) {
+            const auto descriptor = parseRouteDescriptor(descriptorText);
+            if (descriptor.method != "GET" || !isStaticExportablePath(descriptor.path)) {
+                continue;
+            }
+
+            server::HttpRequest request;
+            request.method = descriptor.method;
+            request.target = descriptor.path;
+            request.path = descriptor.path;
+            request.version = "HTTP/1.1";
+
+            const auto response = application.render(request);
+            if (response.statusCode != 200 || response.contentType.find("text/html") != 0) {
+                continue;
+            }
+
+            writer_.writeTextFile(staticRouteOutputPath(result.staticOutputRoot, descriptor.path), response.body);
+            result.staticRoutes.push_back(descriptor.path);
+        }
+    }
+
     Value::Array routeValues;
     routeValues.reserve(result.routes.size());
     for (const auto& route : result.routes) {
@@ -113,6 +172,19 @@ BuildResult BuildPipeline::build(const BuildCommandOptions& options, std::istrea
     writer_.writeTextFile(outputRoot / "wevoa.templates.json",
                           serializeJson(Value(application.compiledTemplateManifest())));
     writer_.writeTextFile(outputRoot / "wevoa.snapshot.json", serializeJson(application.snapshotManifest()));
+    if (options.staticExport) {
+        Value::Array staticRouteValues;
+        staticRouteValues.reserve(result.staticRoutes.size());
+        for (const auto& route : result.staticRoutes) {
+            staticRouteValues.emplace_back(route);
+        }
+
+        Value::Object staticManifest;
+        staticManifest.insert_or_assign("mode", Value("static"));
+        staticManifest.insert_or_assign("output", Value(result.staticOutputRoot.filename().string()));
+        staticManifest.insert_or_assign("routes", Value(std::move(staticRouteValues)));
+        writer_.writeTextFile(outputRoot / "wevoa.static.json", serializeJson(Value(std::move(staticManifest))));
+    }
     return result;
 }
 
