@@ -81,7 +81,7 @@ class StmtVisitor {
 
 class Expr {
   public:
-    explicit Expr(SourceSpan span);
+    explicit Expr(const SourceSpan& span);
     virtual ~Expr() = default;
 
     SourceSpan span;
@@ -91,7 +91,7 @@ class Expr {
 
 class Stmt {
   public:
-    explicit Stmt(SourceSpan span);
+    explicit Stmt(const SourceSpan& span);
     virtual ~Stmt() = default;
 
     SourceSpan span;
@@ -101,7 +101,7 @@ class Stmt {
 
 class LiteralExpr final : public Expr {
   public:
-    LiteralExpr(Value value, SourceSpan span);
+    LiteralExpr(Value value, const SourceSpan& span);
 
     Value value;
 
@@ -110,7 +110,7 @@ class LiteralExpr final : public Expr {
 
 class VariableExpr final : public Expr {
   public:
-    VariableExpr(Token name, SourceSpan span);
+    VariableExpr(Token name, const SourceSpan& span);
 
     Token name;
 
@@ -119,7 +119,7 @@ class VariableExpr final : public Expr {
 
 class AssignExpr final : public Expr {
   public:
-    AssignExpr(Token name, std::unique_ptr<Expr> value, SourceSpan span);
+    AssignExpr(Token name, std::unique_ptr<Expr> value, const SourceSpan& span);
 
     Token name;
     std::unique_ptr<Expr> value;
@@ -129,7 +129,7 @@ class AssignExpr final : public Expr {
 
 class UnaryExpr final : public Expr {
   public:
-    UnaryExpr(Token op, std::unique_ptr<Expr> right, SourceSpan span);
+    UnaryExpr(Token op, std::unique_ptr<Expr> right, const SourceSpan& span);
 
     Token op;
     std::unique_ptr<Expr> right;
@@ -139,7 +139,7 @@ class UnaryExpr final : public Expr {
 
 class BinaryExpr final : public Expr {
   public:
-    BinaryExpr(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right, SourceSpan span);
+    BinaryExpr(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right, const SourceSpan& span);
 
     std::unique_ptr<Expr> left;
     Token op;
@@ -150,7 +150,7 @@ class BinaryExpr final : public Expr {
 
 class GroupingExpr final : public Expr {
   public:
-    GroupingExpr(std::unique_ptr<Expr> expression, SourceSpan span);
+    GroupingExpr(std::unique_ptr<Expr> expression, const SourceSpan& span);
 
     std::unique_ptr<Expr> expression;
 
@@ -162,7 +162,7 @@ class CallExpr final : public Expr {
     CallExpr(std::unique_ptr<Expr> callee,
              Token paren,
              std::vector<std::unique_ptr<Expr>> arguments,
-             SourceSpan span);
+             const SourceSpan& span);
 
     std::unique_ptr<Expr> callee;
     Token paren;
@@ -173,7 +173,7 @@ class CallExpr final : public Expr {
 
 class ArrayExpr final : public Expr {
   public:
-    ArrayExpr(std::vector<std::unique_ptr<Expr>> elements, SourceSpan span);
+    ArrayExpr(std::vector<std::unique_ptr<Expr>> elements, const SourceSpan& span);
 
     std::vector<std::unique_ptr<Expr>> elements;
 
@@ -182,7 +182,7 @@ class ArrayExpr final : public Expr {
 
 class ObjectExpr final : public Expr {
   public:
-    ObjectExpr(std::vector<ObjectField> fields, SourceSpan span);
+    ObjectExpr(std::vector<ObjectField> fields, const SourceSpan& span);
 
     std::vector<ObjectField> fields;
 
@@ -191,7 +191,7 @@ class ObjectExpr final : public Expr {
 
 class HtmlExpr final : public Expr {
   public:
-    HtmlExpr(Token keyword, std::string source, SourceSpan span);
+    HtmlExpr(Token keyword, std::string source, const SourceSpan& span);
 
     Token keyword;
     std::string source;
@@ -201,7 +201,7 @@ class HtmlExpr final : public Expr {
 
 class GetExpr final : public Expr {
   public:
-    GetExpr(std::unique_ptr<Expr> object, Token name, SourceSpan span);
+    GetExpr(std::unique_ptr<Expr> object, Token name, const SourceSpan& span);
 
     std::unique_ptr<Expr> object;
     Token name;
@@ -211,7 +211,7 @@ class GetExpr final : public Expr {
 
 class IndexExpr final : public Expr {
   public:
-    IndexExpr(std::unique_ptr<Expr> object, std::unique_ptr<Expr> index, Token bracket, SourceSpan span);
+    IndexExpr(std::unique_ptr<Expr> object, std::unique_ptr<Expr> index, Token bracket, const SourceSpan& span);
 
     std::unique_ptr<Expr> object;
     std::unique_ptr<Expr> index;
@@ -222,7 +222,7 @@ class IndexExpr final : public Expr {
 
 class ExpressionStmt final : public Stmt {
   public:
-    ExpressionStmt(std::unique_ptr<Expr> expression, SourceSpan span);
+    ExpressionStmt(std::unique_ptr<Expr> expression, const SourceSpan& span);
 
     std::unique_ptr<Expr> expression;
 
@@ -231,7 +231,7 @@ class ExpressionStmt final : public Stmt {
 
 class VarDeclStmt final : public Stmt {
   public:
-    VarDeclStmt(Token name, std::unique_ptr<Expr> initializer, bool isConstant, SourceSpan span);
+    VarDeclStmt(Token name, std::unique_ptr<Expr> initializer, bool isConstant, const SourceSpan& span);
 
     Token name;
     std::unique_ptr<Expr> initializer;
@@ -242,7 +242,7 @@ class VarDeclStmt final : public Stmt {
 
 class BlockStmt final : public Stmt {
   public:
-    BlockStmt(std::vector<std::unique_ptr<Stmt>> statements, SourceSpan span);
+    BlockStmt(std::vector<std::unique_ptr<Stmt>> statements, const SourceSpan& span);
 
     std::vector<std::unique_ptr<Stmt>> statements;
 
@@ -254,7 +254,7 @@ class IfStmt final : public Stmt {
     IfStmt(std::unique_ptr<Expr> condition,
            std::unique_ptr<Stmt> thenBranch,
            std::unique_ptr<Stmt> elseBranch,
-           SourceSpan span);
+           const SourceSpan& span);
 
     std::unique_ptr<Expr> condition;
     std::unique_ptr<Stmt> thenBranch;
@@ -269,7 +269,7 @@ class LoopStmt final : public Stmt {
              std::unique_ptr<Expr> condition,
              std::unique_ptr<Expr> increment,
              std::unique_ptr<Stmt> body,
-             SourceSpan span);
+             const SourceSpan& span);
 
     std::unique_ptr<Stmt> initializer;
     std::unique_ptr<Expr> condition;
@@ -281,7 +281,7 @@ class LoopStmt final : public Stmt {
 
 class WhileStmt final : public Stmt {
   public:
-    WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body, SourceSpan span);
+    WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body, const SourceSpan& span);
 
     std::unique_ptr<Expr> condition;
     std::unique_ptr<Stmt> body;
@@ -294,7 +294,7 @@ class FuncDeclStmt final : public Stmt {
     FuncDeclStmt(Token name,
                  std::vector<Token> params,
                  std::unique_ptr<BlockStmt> body,
-                 SourceSpan span);
+                 const SourceSpan& span);
 
     Token name;
     std::vector<Token> params;
@@ -305,7 +305,7 @@ class FuncDeclStmt final : public Stmt {
 
 class ReturnStmt final : public Stmt {
   public:
-    ReturnStmt(Token keyword, std::unique_ptr<Expr> value, SourceSpan span);
+    ReturnStmt(Token keyword, std::unique_ptr<Expr> value, const SourceSpan& span);
 
     Token keyword;
     std::unique_ptr<Expr> value;
@@ -320,7 +320,7 @@ class RouteDeclStmt final : public Stmt {
                   std::string method,
                   std::vector<Token> middleware,
                   std::unique_ptr<BlockStmt> body,
-                  SourceSpan span);
+                  const SourceSpan& span);
 
     Token keyword;
     std::unique_ptr<Expr> path;
@@ -333,7 +333,7 @@ class RouteDeclStmt final : public Stmt {
 
 class ComponentDeclStmt final : public Stmt {
   public:
-    ComponentDeclStmt(Token keyword, Token name, std::string source, SourceSpan span);
+    ComponentDeclStmt(Token keyword, Token name, std::string source, const SourceSpan& span);
 
     Token keyword;
     Token name;
@@ -344,7 +344,7 @@ class ComponentDeclStmt final : public Stmt {
 
 class ImportStmt final : public Stmt {
   public:
-    ImportStmt(Token keyword, std::unique_ptr<Expr> path, SourceSpan span);
+    ImportStmt(Token keyword, std::unique_ptr<Expr> path, const SourceSpan& span);
 
     Token keyword;
     std::unique_ptr<Expr> path;
@@ -354,7 +354,7 @@ class ImportStmt final : public Stmt {
 
 class BreakStmt final : public Stmt {
   public:
-    BreakStmt(Token keyword, SourceSpan span);
+    BreakStmt(Token keyword, const SourceSpan& span);
 
     Token keyword;
 
@@ -363,7 +363,7 @@ class BreakStmt final : public Stmt {
 
 class ContinueStmt final : public Stmt {
   public:
-    ContinueStmt(Token keyword, SourceSpan span);
+    ContinueStmt(Token keyword, const SourceSpan& span);
 
     Token keyword;
 

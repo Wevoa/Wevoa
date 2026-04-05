@@ -35,7 +35,7 @@ std::vector<Token> Lexer::scanTokens() {
     return tokens_;
 }
 
-std::string Lexer::normalizeNewlines(std::string source) {
+std::string Lexer::normalizeNewlines(const std::string& source) {
     std::string normalized;
     normalized.reserve(source.size());
 

@@ -426,7 +426,7 @@ std::optional<std::string> extractMultipartBoundary(const std::string& contentTy
     std::string boundary = contentType.substr(marker + 9);
     const auto separator = boundary.find(';');
     if (separator != std::string::npos) {
-        boundary = boundary.substr(0, separator);
+        boundary.resize(separator);
     }
 
     boundary = trimLineEnd(boundary);

@@ -4,44 +4,44 @@
 
 namespace wevoaweb {
 
-Expr::Expr(SourceSpan span) : span(span) {}
+Expr::Expr(const SourceSpan& span) : span(span) {}
 
-Stmt::Stmt(SourceSpan span) : span(span) {}
+Stmt::Stmt(const SourceSpan& span) : span(span) {}
 
-LiteralExpr::LiteralExpr(Value value, SourceSpan span) : Expr(span), value(std::move(value)) {}
+LiteralExpr::LiteralExpr(Value value, const SourceSpan& span) : Expr(span), value(std::move(value)) {}
 
 Value LiteralExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitLiteralExpr(*this);
 }
 
-VariableExpr::VariableExpr(Token name, SourceSpan span) : Expr(span), name(std::move(name)) {}
+VariableExpr::VariableExpr(Token name, const SourceSpan& span) : Expr(span), name(std::move(name)) {}
 
 Value VariableExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitVariableExpr(*this);
 }
 
-AssignExpr::AssignExpr(Token name, std::unique_ptr<Expr> value, SourceSpan span)
+AssignExpr::AssignExpr(Token name, std::unique_ptr<Expr> value, const SourceSpan& span)
     : Expr(span), name(std::move(name)), value(std::move(value)) {}
 
 Value AssignExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitAssignExpr(*this);
 }
 
-UnaryExpr::UnaryExpr(Token op, std::unique_ptr<Expr> right, SourceSpan span)
+UnaryExpr::UnaryExpr(Token op, std::unique_ptr<Expr> right, const SourceSpan& span)
     : Expr(span), op(std::move(op)), right(std::move(right)) {}
 
 Value UnaryExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitUnaryExpr(*this);
 }
 
-BinaryExpr::BinaryExpr(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right, SourceSpan span)
+BinaryExpr::BinaryExpr(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right, const SourceSpan& span)
     : Expr(span), left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 
 Value BinaryExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitBinaryExpr(*this);
 }
 
-GroupingExpr::GroupingExpr(std::unique_ptr<Expr> expression, SourceSpan span)
+GroupingExpr::GroupingExpr(std::unique_ptr<Expr> expression, const SourceSpan& span)
     : Expr(span), expression(std::move(expression)) {}
 
 Value GroupingExpr::accept(ExprVisitor& visitor) const {
@@ -51,62 +51,62 @@ Value GroupingExpr::accept(ExprVisitor& visitor) const {
 CallExpr::CallExpr(std::unique_ptr<Expr> callee,
                    Token paren,
                    std::vector<std::unique_ptr<Expr>> arguments,
-                   SourceSpan span)
+                   const SourceSpan& span)
     : Expr(span), callee(std::move(callee)), paren(std::move(paren)), arguments(std::move(arguments)) {}
 
 Value CallExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitCallExpr(*this);
 }
 
-ArrayExpr::ArrayExpr(std::vector<std::unique_ptr<Expr>> elements, SourceSpan span)
+ArrayExpr::ArrayExpr(std::vector<std::unique_ptr<Expr>> elements, const SourceSpan& span)
     : Expr(span), elements(std::move(elements)) {}
 
 Value ArrayExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitArrayExpr(*this);
 }
 
-ObjectExpr::ObjectExpr(std::vector<ObjectField> fields, SourceSpan span) : Expr(span), fields(std::move(fields)) {}
+ObjectExpr::ObjectExpr(std::vector<ObjectField> fields, const SourceSpan& span) : Expr(span), fields(std::move(fields)) {}
 
 Value ObjectExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitObjectExpr(*this);
 }
 
-HtmlExpr::HtmlExpr(Token keyword, std::string source, SourceSpan span)
+HtmlExpr::HtmlExpr(Token keyword, std::string source, const SourceSpan& span)
     : Expr(span), keyword(std::move(keyword)), source(std::move(source)) {}
 
 Value HtmlExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitHtmlExpr(*this);
 }
 
-GetExpr::GetExpr(std::unique_ptr<Expr> object, Token name, SourceSpan span)
+GetExpr::GetExpr(std::unique_ptr<Expr> object, Token name, const SourceSpan& span)
     : Expr(span), object(std::move(object)), name(std::move(name)) {}
 
 Value GetExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitGetExpr(*this);
 }
 
-IndexExpr::IndexExpr(std::unique_ptr<Expr> object, std::unique_ptr<Expr> index, Token bracket, SourceSpan span)
+IndexExpr::IndexExpr(std::unique_ptr<Expr> object, std::unique_ptr<Expr> index, Token bracket, const SourceSpan& span)
     : Expr(span), object(std::move(object)), index(std::move(index)), bracket(std::move(bracket)) {}
 
 Value IndexExpr::accept(ExprVisitor& visitor) const {
     return visitor.visitIndexExpr(*this);
 }
 
-ExpressionStmt::ExpressionStmt(std::unique_ptr<Expr> expression, SourceSpan span)
+ExpressionStmt::ExpressionStmt(std::unique_ptr<Expr> expression, const SourceSpan& span)
     : Stmt(span), expression(std::move(expression)) {}
 
 void ExpressionStmt::accept(StmtVisitor& visitor) const {
     visitor.visitExpressionStmt(*this);
 }
 
-VarDeclStmt::VarDeclStmt(Token name, std::unique_ptr<Expr> initializer, bool isConstant, SourceSpan span)
+VarDeclStmt::VarDeclStmt(Token name, std::unique_ptr<Expr> initializer, bool isConstant, const SourceSpan& span)
     : Stmt(span), name(std::move(name)), initializer(std::move(initializer)), isConstant(isConstant) {}
 
 void VarDeclStmt::accept(StmtVisitor& visitor) const {
     visitor.visitVarDeclStmt(*this);
 }
 
-BlockStmt::BlockStmt(std::vector<std::unique_ptr<Stmt>> statements, SourceSpan span)
+BlockStmt::BlockStmt(std::vector<std::unique_ptr<Stmt>> statements, const SourceSpan& span)
     : Stmt(span), statements(std::move(statements)) {}
 
 void BlockStmt::accept(StmtVisitor& visitor) const {
@@ -116,7 +116,7 @@ void BlockStmt::accept(StmtVisitor& visitor) const {
 IfStmt::IfStmt(std::unique_ptr<Expr> condition,
                std::unique_ptr<Stmt> thenBranch,
                std::unique_ptr<Stmt> elseBranch,
-               SourceSpan span)
+               const SourceSpan& span)
     : Stmt(span),
       condition(std::move(condition)),
       thenBranch(std::move(thenBranch)),
@@ -130,7 +130,7 @@ LoopStmt::LoopStmt(std::unique_ptr<Stmt> initializer,
                    std::unique_ptr<Expr> condition,
                    std::unique_ptr<Expr> increment,
                    std::unique_ptr<Stmt> body,
-                   SourceSpan span)
+                   const SourceSpan& span)
     : Stmt(span),
       initializer(std::move(initializer)),
       condition(std::move(condition)),
@@ -141,7 +141,7 @@ void LoopStmt::accept(StmtVisitor& visitor) const {
     visitor.visitLoopStmt(*this);
 }
 
-WhileStmt::WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body, SourceSpan span)
+WhileStmt::WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body, const SourceSpan& span)
     : Stmt(span), condition(std::move(condition)), body(std::move(body)) {}
 
 void WhileStmt::accept(StmtVisitor& visitor) const {
@@ -151,14 +151,14 @@ void WhileStmt::accept(StmtVisitor& visitor) const {
 FuncDeclStmt::FuncDeclStmt(Token name,
                            std::vector<Token> params,
                            std::unique_ptr<BlockStmt> body,
-                           SourceSpan span)
+                           const SourceSpan& span)
     : Stmt(span), name(std::move(name)), params(std::move(params)), body(std::move(body)) {}
 
 void FuncDeclStmt::accept(StmtVisitor& visitor) const {
     visitor.visitFuncDeclStmt(*this);
 }
 
-ReturnStmt::ReturnStmt(Token keyword, std::unique_ptr<Expr> value, SourceSpan span)
+ReturnStmt::ReturnStmt(Token keyword, std::unique_ptr<Expr> value, const SourceSpan& span)
     : Stmt(span), keyword(std::move(keyword)), value(std::move(value)) {}
 
 void ReturnStmt::accept(StmtVisitor& visitor) const {
@@ -170,7 +170,7 @@ RouteDeclStmt::RouteDeclStmt(Token keyword,
                              std::string method,
                              std::vector<Token> middleware,
                              std::unique_ptr<BlockStmt> body,
-                             SourceSpan span)
+                             const SourceSpan& span)
     : Stmt(span),
       keyword(std::move(keyword)),
       path(std::move(path)),
@@ -182,27 +182,27 @@ void RouteDeclStmt::accept(StmtVisitor& visitor) const {
     visitor.visitRouteDeclStmt(*this);
 }
 
-ComponentDeclStmt::ComponentDeclStmt(Token keyword, Token name, std::string source, SourceSpan span)
+ComponentDeclStmt::ComponentDeclStmt(Token keyword, Token name, std::string source, const SourceSpan& span)
     : Stmt(span), keyword(std::move(keyword)), name(std::move(name)), source(std::move(source)) {}
 
 void ComponentDeclStmt::accept(StmtVisitor& visitor) const {
     visitor.visitComponentDeclStmt(*this);
 }
 
-ImportStmt::ImportStmt(Token keyword, std::unique_ptr<Expr> path, SourceSpan span)
+ImportStmt::ImportStmt(Token keyword, std::unique_ptr<Expr> path, const SourceSpan& span)
     : Stmt(span), keyword(std::move(keyword)), path(std::move(path)) {}
 
 void ImportStmt::accept(StmtVisitor& visitor) const {
     visitor.visitImportStmt(*this);
 }
 
-BreakStmt::BreakStmt(Token keyword, SourceSpan span) : Stmt(span), keyword(std::move(keyword)) {}
+BreakStmt::BreakStmt(Token keyword, const SourceSpan& span) : Stmt(span), keyword(std::move(keyword)) {}
 
 void BreakStmt::accept(StmtVisitor& visitor) const {
     visitor.visitBreakStmt(*this);
 }
 
-ContinueStmt::ContinueStmt(Token keyword, SourceSpan span) : Stmt(span), keyword(std::move(keyword)) {}
+ContinueStmt::ContinueStmt(Token keyword, const SourceSpan& span) : Stmt(span), keyword(std::move(keyword)) {}
 
 void ContinueStmt::accept(StmtVisitor& visitor) const {
     visitor.visitContinueStmt(*this);

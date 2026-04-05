@@ -42,7 +42,7 @@ std::string readFileContents(const std::filesystem::path& path) {
     return std::string(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
 }
 
-std::string trim(std::string value) {
+std::string trim(const std::string& value) {
     const auto first = value.find_first_not_of(" \t\r\n");
     if (first == std::string::npos) {
         return "";

@@ -14,7 +14,7 @@ class Lexer {
     std::vector<Token> scanTokens();
 
   private:
-    static std::string normalizeNewlines(std::string source);
+    static std::string normalizeNewlines(const std::string& source);
     static bool isIdentifierStart(char c);
     static bool isIdentifierPart(char c);
 

@@ -24,15 +24,15 @@ class Value {
                                  std::shared_ptr<Object>>;
 
     Value() = default;
-    Value(std::int64_t value);
-    Value(std::string value);
-    Value(const char* value);
-    Value(bool value);
-    Value(std::shared_ptr<Callable> value);
-    Value(std::shared_ptr<Array> value);
-    Value(std::shared_ptr<Object> value);
-    Value(Array value);
-    Value(Object value);
+    explicit Value(std::int64_t value);
+    explicit Value(std::string value);
+    explicit Value(const char* value);
+    explicit Value(bool value);
+    explicit Value(std::shared_ptr<Callable> value);
+    explicit Value(std::shared_ptr<Array> value);
+    explicit Value(std::shared_ptr<Object> value);
+    explicit Value(Array value);
+    explicit Value(Object value);
 
     bool isNil() const;
     bool isInteger() const;

@@ -9,8 +9,8 @@ namespace wevoaweb {
 
 class WevoaError : public std::runtime_error {
   public:
-    WevoaError(std::string message, SourceSpan span)
-        : std::runtime_error(std::move(message)), span_(span) {}
+    WevoaError(const std::string& message, const SourceSpan& span)
+        : std::runtime_error(message), span_(span) {}
 
     const SourceSpan& span() const noexcept {
         return span_;
