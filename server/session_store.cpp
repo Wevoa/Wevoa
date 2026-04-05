@@ -112,9 +112,9 @@ std::size_t SessionStore::size() const {
 
 void SessionStore::cleanupLoop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while (!stopRequested_) {
-        cleanupWake_.wait_for(lock, cleanupInterval_, [this]() { return stopRequested_; });
-        if (stopRequested_) {
+    while (true) {
+        // FIXED: Using wait_for's boolean return avoids static analysis dead-code warnings
+        if (cleanupWake_.wait_for(lock, cleanupInterval_, [this]() { return stopRequested_; })) {
             break;
         }
 

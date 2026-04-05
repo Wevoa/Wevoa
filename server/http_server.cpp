@@ -811,16 +811,16 @@ void HttpServer::run() {
                     Socket clientSocket(queuedSocket);
                     HttpResponse response;
                     HttpRequest request;
-                    bool hasRequest = false;
 
                     try {
                         const std::string rawRequest = readRequest(clientSocket.native());
                         if (!rawRequest.empty()) {
                             request = parseRequest(rawRequest);
-                            hasRequest = true;
                             response = dispatch(request);
                             sendAll(clientSocket.native(), response.serialize());
-                            if (observer_ && hasRequest) {
+                            // FIXED: Removed redundant hasRequest constraint.
+                            // Successful parseRequest logically guarantees we have a request.
+                            if (observer_) {
                                 observer_(request, response);
                             }
                         }

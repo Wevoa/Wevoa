@@ -520,7 +520,8 @@ bool versionMatches(const std::string& constraint, const std::string& version) {
     }
 
     std::string normalized = constraint;
-    if (!normalized.empty() && normalized.front() == '=') {
+    // FIXED: Removes redundant array non-empty check since constraint check preceding this guarantees it.
+    if (normalized.front() == '=') {
         normalized.erase(normalized.begin());
     }
 
@@ -1365,7 +1366,8 @@ std::vector<InstalledPackageInfo> PackageManager::search(const std::string& quer
 
     std::sort(matches.begin(), matches.end(), [](const InstalledPackageInfo& left, const InstalledPackageInfo& right) {
         if (left.isOfficial != right.isOfficial) {
-            return left.isOfficial && !right.isOfficial;
+            // FIXED: Removes redundant !right check. If they are not equal, then left being true implies right is false.
+            return left.isOfficial;
         }
         return left.packageName < right.packageName;
     });
